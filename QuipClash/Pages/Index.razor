@@ -5,39 +5,37 @@
 @implements IAsyncDisposable
 
 <style>
-	form {
-		float: left;
+	ol.leaderboard {
+		list-style: upper-roman;
 	}
 </style>
 
-<div class="menu" hidden="@isConnected">
+<div class="menu" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Menu)">
 	<form>
 		<p>Username</p>
 		<input type="text" maxlength="32" placeholder="epic_username_69" @bind-value="username" />
 		<br />
 		<br />
-		<input type="text" maxlength="4" @bind-value="joinHubInput" />
-		<input type="button" value="Join hub" @onclick="JoinHub" /> @*people can currently join without a username...*@
+		<input type="text" maxlength="4" @bind-value="gameIDInput" />
+		<input type="button" value="Join hub" disabled="@(username == "" || gameIDInput.Length != 4 || !QuipClashHub.ActiveGames.ContainsKey(gameIDInput))" @onclick="JoinGame" />
 		<br />
 		<br />
-		<input type="button" value="Create hub" @onclick="CreateHub" />
+		<input type="button" value="Create hub" @onclick="CreateGame" />
 	</form>
 </div>
 <div class="lobby" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Lobby)">
-	<ul>
-		@foreach (PlayerInfo _info in QuipClashHub.Players.Values)
-		{
-			@if (_info.isPartyLeader)
+	@if (QuipClashHub.ActiveGames.Count > 0 && gameID != "")
+	{
+		<p>Game ID: @gameID</p>
+		<ul>
+			@foreach (PlayerInfo _info in QuipClashHub.ActiveGames[gameID].players.Values)
 			{
-				<li>* @_info.username</li>
+				<PlayerListItem Username="@_info.username" IsPartyLeader="@_info.isPartyLeader" />
 			}
-			else
-			{
-				<li>@_info.username</li>
-			}
-		}
-	</ul>
-	<button hidden="@(!isPartyLeader)" @onclick="StartGame">Start game</button> @*party leader can currently start the game without enough players...*@
+		</ul>
+		//why doesn't this work????????? It's disabled even when I have 3 players
+		<button hidden="@(!isPartyLeader)" disabled="@QuipClashHub.ActiveGames[gameID].players.Count < 3" @onclick="StartGame">Start game</button>
+	}
 </div>
 <div class="game" hidden="@(currentPlayerState == PlayerInfo.PlayerState.Lobby)">
 	<div class="responding" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Responding)">
@@ -60,38 +58,28 @@
 		}
 	</div>
 	<div class="voting" hidden="@(currentPlayerState != PlayerInfo.PlayerState.EndGame)">
-		<ul>
+		<ol class="leaderboard">
 			@if (currentLeaderboard != null)
 			{
 				@for (int i = 0; i < 3; i++)
 				{
-					@if (currentLeaderboard[i].isPartyLeader)
-					{
-						<li>* <b>@(i + 1)</b> @currentLeaderboard[i].username - @currentLeaderboard[i].points</li>
-					}
-					else if (i == 0)
-					{
-						<li><b>@(i + 1) @currentLeaderboard[i].username - @currentLeaderboard[i].points</b></li>
-					}
-					else
-					{
-						<li><b>@(i + 1)</b> @currentLeaderboard[i].username - @currentLeaderboard[i].points</li>
-					}
+					<PlayerListItem Username="@currentLeaderboard[i].username" IsPartyLeader="@currentLeaderboard[i].isPartyLeader" />
 				}
 			}
-		</ul>
+		</ol>
+		<button @onclick="() => UpdatePlayerState(PlayerInfo.PlayerState.Menu)">Return to menu</button>
 	</div>
 </div>
-<br />
 
 @code {
 	//UI variables
-	string joinHubInput;
-	string responseInput;
+	string gameIDInput = "";
+	string responseInput = "";
 
 	//game variables
+	string gameID = "";
 	string username = "";
-	bool isPartyLeader;
+	bool isPartyLeader = false;
 
 	string currentPrompt;
 	int currentDuelIndex;
@@ -100,65 +88,61 @@
 	PlayerInfo.PlayerState currentPlayerState;
 
 	HubConnection hubConnection;
-	bool isConnected;
+
+	protected override async Task OnInitializedAsync()
+	{
+		//creates the hub connection
+		hubConnection = new HubConnectionBuilder()
+			.WithUrl(NavigationManager.ToAbsoluteUri($"/quipclashhub"))
+			.Build();
+
+		//adds handlers
+		hubConnection.On<string>("CompleteCreateGame", async (g) => await CompleteCreateGame(g));
+		hubConnection.On<string, List<ResponseInfo>>("ReceiveResponses", (p, r) => ReceiveResponses(p, r));
+		hubConnection.On<string, int>("BeginRespond", (p, d) => BeginRespond(p, d));
+		hubConnection.On<PlayerInfo.PlayerState>("UpdatePlayerState", (s) => UpdatePlayerState(s));
+		hubConnection.On<List<PlayerInfo>>("GameEnded", (l) => GameEnded(l));
+		hubConnection.On("UpdateUI", () => StateHasChanged());
+
+		//initiates the connection
+		await hubConnection.StartAsync();
+
+		//brings you to the menu
+		UpdatePlayerState(PlayerInfo.PlayerState.Menu);
+	}
 
 	// outbound logic //
 
-	async Task JoinHub()
+	async Task JoinGame()
 	{
-		try
-		{
-			//creates the hub connection
-			hubConnection = new HubConnectionBuilder()
-				.WithUrl(NavigationManager.ToAbsoluteUri($"/hub-1234"))
-				.Build();
-			
-			//adds handlers
-			hubConnection.On<string, List<ResponseInfo>>("ReceiveResponses", (p, r) => ReceiveResponses(p, r));
-			hubConnection.On<string, int>("BeginRespond", (p, d) => BeginRespond(p, d));
-			hubConnection.On<PlayerInfo.PlayerState>("UpdatePlayerState", (s) => UpdatePlayerState(s));
-			hubConnection.On<List<PlayerInfo>>("GameEnded", (l) => GameEnded(l));
-			hubConnection.On("UpdateUI", () => StateHasChanged());
+		gameID = gameIDInput;
 
-			//initiates the connection
-			await hubConnection.StartAsync();
+		await hubConnection.SendAsync("RegisterPlayer", gameID, username);
 
-			//registers the client in the hub's list of players
-			await hubConnection.SendAsync("RegisterPlayer", username);
-
-			//checks if the client is the party leader and enters into the lobby
-			isPartyLeader = QuipClashHub.Players[hubConnection.ConnectionId].isPartyLeader;
-			UpdatePlayerState(PlayerInfo.PlayerState.Lobby);
-
-			isConnected = true;
-
-			StateHasChanged();
-		}
-		catch { }
+		UpdatePlayerState(PlayerInfo.PlayerState.Lobby);
 	}
 
-	async Task CreateHub()
+	async Task CreateGame()
 	{
-
+		isPartyLeader = true;
+		await hubConnection.SendAsync("CreateGame");
 	}
 
 	async Task StartGame()
 	{
-		await hubConnection.SendAsync("StartGame");
-
-		StateHasChanged();
+		await hubConnection.SendAsync("StartGame", gameID);
 	}
 
 	async Task SendResponse()
 	{
-		await hubConnection.SendAsync("SendResponse", responseInput, currentDuelIndex);
+		await hubConnection.SendAsync("SendResponse", gameID, responseInput, currentDuelIndex);
 
 		UpdatePlayerState(PlayerInfo.PlayerState.Waiting);
 	}
 
 	async Task SendVote(int voteOption)
 	{
-		await hubConnection.SendAsync("SendVote", voteOption);
+		await hubConnection.SendAsync("SendVote", gameID, voteOption);
 
 		UpdatePlayerState(PlayerInfo.PlayerState.Waiting);
 	}
@@ -167,12 +151,18 @@
 	{
 		if (hubConnection != null)
 		{
-			await hubConnection.SendAsync("RemovePlayer");
+			await hubConnection.SendAsync("RemovePlayer", gameID);
 			await hubConnection.DisposeAsync();
 		}
 	}
 
 	// inbound logic //
+
+	public async Task CompleteCreateGame(string _gameID)
+	{
+		gameIDInput = _gameID;
+		await JoinGame();
+	}
 
 	public void BeginRespond(string prompt, int duelIndex)
 	{

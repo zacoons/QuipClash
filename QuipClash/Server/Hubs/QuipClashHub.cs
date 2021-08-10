@@ -9,32 +9,72 @@ namespace QuipClash.Server.Hubs
 {
     public class QuipClashHub : Hub
     {
-        public static readonly Dictionary<string, PlayerInfo> Players = new Dictionary<string, PlayerInfo>();
+        public static readonly Dictionary<string, GameInfo> ActiveGames = new Dictionary<string, GameInfo>();
 
-        private static List<RoundInfo> Rounds = new List<RoundInfo>();
-        private static int NumberOfRounds = 1;
-
-        private static int roundIndex = 0;
-
-        public async Task RegisterPlayer(string username)
+        public async Task CreateGame()
         {
-            Players.Add(Context.ConnectionId, new PlayerInfo(username, Players.Count == 0));
-            await Clients.All.SendAsync("UpdateUI");
+            //generates a random game ID
+            string gameID = GenerateGameID();
+
+            //makes sure that the ID is unique. If it's not, then it's regenerated
+            if (ActiveGames.ContainsKey(gameID))
+                await CreateGame();
+            else
+            {
+                ActiveGames.Add(gameID, new GameInfo(3));
+
+                await Clients.Client(Context.ConnectionId).SendAsync("CompleteCreateGame", gameID);
+            }
         }
-        public async Task RemovePlayer()
+        private string GenerateGameID()
         {
-            Players.Remove(Context.ConnectionId);
-            await Clients.All.SendAsync("UpdateUI");
+            var alphabet = new char[]
+                { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z' };
+            char[] characters = new char[4];
+
+            for (int i = 0; i < 4; i++)
+            {
+                var isCharacterInt = new Random().Next(0, 1) == 0;
+
+                if (isCharacterInt)
+                    characters[i] = new Random().Next(0, 9).ToString().ToCharArray()[0];
+                else
+                    characters[i] = alphabet[new Random().Next(0, 26)];
+            }
+
+            return new string(characters);
         }
 
-        public async Task StartGame()
+        public async Task RegisterPlayer(string gameID, string username)
         {
-            await StartNewRound();
+            var players = ActiveGames[gameID].players;
+            foreach (string _connectionID in players.Keys.ToArray())
+                await Groups.AddToGroupAsync(_connectionID, gameID);
+
+            players.Add(Context.ConnectionId, new PlayerInfo(gameID, username, players.Count == 0));
+            
+            await Clients.Group(gameID).SendAsync("UpdateUI");
+        }
+        public async Task RemovePlayer(string gameID)
+        {
+            var players = ActiveGames[gameID].players;
+            foreach (string _connectionID in players.Keys.ToArray())
+                await Groups.AddToGroupAsync(_connectionID, gameID);
+
+            players.Remove(Context.ConnectionId);
+
+            await Clients.Group(gameID).SendAsync("UpdateUI");
         }
 
-        public async Task SendResponse(string response, int duelIndex)
+        public async Task StartGame(string gameID)
         {
-            var roundInfo = Rounds[roundIndex];
+            await StartNewRound(gameID);
+        }
+
+        public async Task SendResponse(string gameID, string response, int duelIndex)
+        {
+            var activeGame = ActiveGames[gameID];
+            var roundInfo = activeGame.rounds[activeGame.roundIndex];
             var duelInfo = roundInfo.duels[duelIndex];
 
             //adds the user's response to the array
@@ -46,17 +86,18 @@ namespace QuipClash.Server.Hubs
                 roundInfo.completedDuels++;
                 
                 if (roundInfo.isDuelingComplete)
-                    await StartNextVote();
+                    await StartNextVote(gameID);
             }
         }
 
-        public async Task SendVote(int voteOption)
+        public async Task SendVote(string gameID, int voteOption)
         {
-            var roundInfo = Rounds[roundIndex];
+            var activeGame = ActiveGames[gameID];
+            var roundInfo = activeGame.rounds[activeGame.roundIndex];
             var duelInfo = roundInfo.duels[roundInfo.completedVotes];
 
             //gives a point to the author of the option that was voted for
-            Players[duelInfo.responses[voteOption].authorID].points++;
+            activeGame.players[duelInfo.responses[voteOption].authorID].points++;
             
             //removes the voter from the backlog
             duelInfo.voters.Remove(Context.ConnectionId);
@@ -67,21 +108,22 @@ namespace QuipClash.Server.Hubs
 
                 if (roundInfo.isVotingComplete)
                 {
-                    roundIndex++;
-                    await StartNewRound();
+                    activeGame.roundIndex++;
+                    await StartNewRound(gameID);
                 }
                 else
-                    await StartNextVote();
+                    await StartNextVote(gameID);
             }
         }
 
-        async Task StartNextVote()
+        async Task StartNextVote(string gameID)
         {
-            var roundInfo = Rounds[roundIndex];
+            var activeGame = ActiveGames[gameID];
+            var roundInfo = activeGame.rounds[activeGame.roundIndex];
             var duelInfo = roundInfo.duels[roundInfo.completedVotes];
             
             //gets all of the players except the ones that took part in the duel that's being voted
-            var voters = Players.Keys.ToList().Except(duelInfo.players.ToList()).ToList();
+            var voters = activeGame.players.Keys.ToList().Except(duelInfo.players.ToList()).ToList();
             duelInfo.voters = voters;
             
             //lets the voters know about what they're voting for
@@ -92,95 +134,44 @@ namespace QuipClash.Server.Hubs
             }
         }
 
-        async Task StartNewRound()
+        async Task StartNewRound(string gameID)
         {
-            if (Rounds.Count == NumberOfRounds)
-                await EndGame();
+            var activeGame = ActiveGames[gameID];
+            var activeRounds = ActiveGames[gameID].rounds;
+
+            if (activeRounds.Count == activeGame.numberOfRounds)
+                await EndGame(gameID);
             else
             {
                 //creates a new round and adds it to the list
-                Rounds.Add(new RoundInfo(Players.Keys.ToList(), roundIndex));
+                activeRounds.Add(new RoundInfo(activeGame.players.Keys.ToList(), activeGame.roundIndex));
 
                 //if there's a player sitting out they get told to wait. If not, then this is undone in the next section
                 await Clients.All.SendAsync("UpdatePlayerState", PlayerInfo.PlayerState.Waiting);
 
                 //lets the duellers know about their duel
-                for (int i = 0; i < Rounds[roundIndex].duels.Count; i++)
+                for (int i = 0; i < activeRounds[activeGame.roundIndex].duels.Count; i++)
                 {
-                    var duelInfo = Rounds[roundIndex].duels[i];
+                    var duelInfo = activeRounds[activeGame.roundIndex].duels[i];
                     await Clients.Client(duelInfo.players[0]).SendAsync("BeginRespond", duelInfo.prompt, i);
                     await Clients.Client(duelInfo.players[1]).SendAsync("BeginRespond", duelInfo.prompt, i);
                 }
             }
         }
 
-        async Task EndGame()
+        async Task EndGame(string gameID)
         {
-            var leaderboard = Players.Values.ToList();
+            var players = ActiveGames[gameID].players;
+
+            var leaderboard = players.Values.ToList();
             //order players by most points to least points
             leaderboard = leaderboard.OrderByDescending(p => p.points).ToList();
 
             //sends everyone the leaderboard and the message to display the end game screen
-            await Clients.All.SendAsync("GameEnded", leaderboard);
-            await Clients.All.SendAsync("UpdatePlayerState", PlayerInfo.PlayerState.EndGame);
+            await Clients.Group(gameID).SendAsync("GameEnded", leaderboard);
+            await Clients.Group(gameID).SendAsync("UpdatePlayerState", PlayerInfo.PlayerState.EndGame);
+
+            ActiveGames.Remove(gameID);
         }
-    }
-}
-
-public class RoundInfo
-{
-    private readonly string[] prompts = new string[]
-    {
-        "A word for a spider with diarrhea",
-        "The tool that you would use for getting toast out of a toaster",
-        "My gandma is the best at ____",
-        "A man went to jail for...",
-        "Why did the chicken cross the road?",
-        "How would you describe what a dog is to an alien?",
-        "The worst thing to be reincarnated as",
-        "The worst thing to make a spaceship out of",
-    };
-
-    public readonly List<DuelInfo> duels = new List<DuelInfo>();
-
-    public int completedDuels;
-    public bool isDuelingComplete => completedDuels == duels.Count;
-
-    public int completedVotes;
-    public bool isVotingComplete => completedVotes == duels.Count;
-
-    public RoundInfo(List<string> players, int roundIndex)
-    {
-        var isEven = (players.Count % 2) == 0;
-
-        //if there is an odd number of players, remove one from the duel queue
-        if (!isEven)
-        {
-            var sittingOutPlayer = players[roundIndex];
-            players.Remove(sittingOutPlayer);
-        }
-
-        //add a new duel for each pair of players
-        while (players.Count > 0)
-        {
-            duels.Add(new DuelInfo(prompts[new Random().Next(0, prompts.Length)], players.GetRange(0, 2).ToArray()));
-            players.RemoveRange(0, 2);
-        }
-    }
-}
-
-public class DuelInfo
-{
-    public string[] players;
-    public string prompt;
-    public List<ResponseInfo> responses = new List<ResponseInfo>();
-
-    public List<string> voters = new List<string>();
-    public bool isVotingComplete => voters.Count == 0;
-
-    public DuelInfo(string _prompt, string[] _players)
-    {
-        prompt = _prompt;
-        players = _players;
     }
 }

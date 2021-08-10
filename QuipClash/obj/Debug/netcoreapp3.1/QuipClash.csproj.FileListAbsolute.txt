@@ -63,3 +63,5 @@ C:\Users\zacha\source\repos\QuipClash\QuipClash\obj\Debug\netcoreapp3.1\QuipClas
 C:\Users\zacha\source\repos\QuipClash\QuipClash\obj\Debug\netcoreapp3.1\QuipClash.dll
 C:\Users\zacha\source\repos\QuipClash\QuipClash\obj\Debug\netcoreapp3.1\QuipClash.pdb
 C:\Users\zacha\source\repos\QuipClash\QuipClash\obj\Debug\netcoreapp3.1\QuipClash.genruntimeconfig.cache
+C:\Users\zacha\source\repos\QuipClash\QuipClash\obj\Debug\netcoreapp3.1\RazorDeclaration\Shared\PlayerListItem.razor.g.cs
+C:\Users\zacha\source\repos\QuipClash\QuipClash\obj\Debug\netcoreapp3.1\Razor\Shared\PlayerListItem.razor.g.cs

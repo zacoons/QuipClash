@@ -60,7 +60,7 @@ namespace QuipClash
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapBlazorHub();
-                endpoints.MapHub<QuipClashHub>("/hub-1234");
+                endpoints.MapHub<QuipClashHub>("/quipclashhub");
                 endpoints.MapFallbackToPage("/_Host");
             });
         }

@@ -7,6 +7,7 @@ namespace QuipClash.Shared
 {
     public class PlayerInfo
     {
+        public string gameID { get; set; }
         public string username { get; set; }
         public bool isPartyLeader { get; set; }
 
@@ -14,6 +15,7 @@ namespace QuipClash.Shared
         public PlayerState playerState { get; set; }
         public enum PlayerState
         {
+            Menu,
             Lobby,
             Responding,
             Waiting,
@@ -22,8 +24,9 @@ namespace QuipClash.Shared
         };
 
         public PlayerInfo() { }
-        public PlayerInfo(string _username, bool _isPartyLeader)
+        public PlayerInfo(string _gameID, string _username, bool _isPartyLeader)
         {
+            gameID = _gameID;
             username = _username;
             isPartyLeader = _isPartyLeader;
         }

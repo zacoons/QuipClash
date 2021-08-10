@@ -1,0 +1,16 @@
+﻿@if (IsPartyLeader)
+{
+	<p>🜲 @Username</p>
+}
+else
+{
+	<p>@Username</p>
+}
+
+@code {
+	[Parameter]
+	public string Username { get; set; }
+
+	[Parameter]
+	public bool IsPartyLeader { get; set; }
+}
