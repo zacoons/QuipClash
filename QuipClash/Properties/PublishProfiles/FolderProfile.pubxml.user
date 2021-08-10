@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+https://go.microsoft.com/fwlink/?LinkID=208121. 
+-->
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <_PublishTargetUrl>C:\Users\zacha\source\repos\QuipClash\QuipClash\bin\QuipClash</_PublishTargetUrl>
+    <History>True|2021-08-09T07:07:20.5255029Z;False|2021-08-09T17:05:12.0919492+10:00;True|2021-08-09T17:04:26.0511310+10:00;True|2021-08-09T17:00:35.6500991+10:00;</History>
+  </PropertyGroup>
+</Project>
