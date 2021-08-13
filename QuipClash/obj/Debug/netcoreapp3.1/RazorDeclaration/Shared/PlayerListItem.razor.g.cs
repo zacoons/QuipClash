@@ -83,13 +83,13 @@ using QuipClash.Shared;
         }
         #pragma warning restore 1998
 #nullable restore
-#line 10 "C:\Users\zacha\source\repos\QuipClash\QuipClash\Shared\PlayerListItem.razor"
+#line 19 "C:\Users\zacha\source\repos\QuipClash\QuipClash\Shared\PlayerListItem.razor"
        
 	[Parameter]
 	public string Username { get; set; }
 
 	[Parameter]
-	public bool IsPartyLeader { get; set; }
+	public int MascottIndex { get; set; }
 
 #line default
 #line hidden

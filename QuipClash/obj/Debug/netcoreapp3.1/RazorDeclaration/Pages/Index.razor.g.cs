@@ -98,11 +98,13 @@ using QuipClash.Server.Hubs;
         }
         #pragma warning restore 1998
 #nullable restore
-#line 73 "C:\Users\zacha\source\repos\QuipClash\QuipClash\Pages\Index.razor"
+#line 189 "C:\Users\zacha\source\repos\QuipClash\QuipClash\Pages\Index.razor"
        
-	//UI variables
+	//local variables
 	string gameIDInput = "";
 	string responseInput = "";
+
+	readonly int mascottCount = 5;
 
 	//game variables
 	string gameID = "";
@@ -113,6 +115,7 @@ using QuipClash.Server.Hubs;
 	int currentDuelIndex;
 	List<ResponseInfo> currentResponses;
 	List<PlayerInfo> currentLeaderboard;
+	int currentPlacing;
 	PlayerInfo.PlayerState currentPlayerState;
 
 	HubConnection hubConnection;
@@ -126,11 +129,11 @@ using QuipClash.Server.Hubs;
 
 		//adds handlers
 		hubConnection.On<string>("CompleteCreateGame", async (g) => await CompleteCreateGame(g));
-		hubConnection.On<string, List<ResponseInfo>>("ReceiveResponses", (p, r) => ReceiveResponses(p, r));
+		hubConnection.On<string, List<ResponseInfo>>("BeginVote", (p, r) => BeginVote(p, r));
 		hubConnection.On<string, int>("BeginRespond", (p, d) => BeginRespond(p, d));
 		hubConnection.On<PlayerInfo.PlayerState>("UpdatePlayerState", (s) => UpdatePlayerState(s));
 		hubConnection.On<List<PlayerInfo>>("GameEnded", (l) => GameEnded(l));
-		hubConnection.On("UpdateUI", () => StateHasChanged());
+		hubConnection.On("UpdateUI", StateHasChanged);
 
 		//initiates the connection
 		await hubConnection.StartAsync();
@@ -143,11 +146,10 @@ using QuipClash.Server.Hubs;
 
 	async Task JoinGame()
 	{
-		gameID = gameIDInput;
+		gameID = gameIDInput.ToLower();
 
-		await hubConnection.SendAsync("RegisterPlayer", gameID, username);
-
-		UpdatePlayerState(PlayerInfo.PlayerState.Lobby);
+		var randomm = new Random();
+		await hubConnection.SendAsync("RegisterPlayer", gameID, username, randomm.Next(1, mascottCount));
 	}
 
 	async Task CreateGame()
@@ -199,13 +201,17 @@ using QuipClash.Server.Hubs;
 
 		UpdatePlayerState(PlayerInfo.PlayerState.Responding);
 
+		//do timer stuff here
+
 		StateHasChanged();
 	}
 
-	public void ReceiveResponses(string prompt, List<ResponseInfo> responses)
+	public void BeginVote(string prompt, List<ResponseInfo> responses)
 	{
 		currentPrompt = prompt;
 		currentResponses = responses;
+
+		//do timer stuff here
 	}
 
 	public void GameEnded(List<PlayerInfo> leaderboard)

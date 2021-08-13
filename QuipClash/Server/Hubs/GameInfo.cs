@@ -2,23 +2,22 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Timers;
 using QuipClash.Shared;
 
 namespace QuipClash.Server.Hubs
 {
     public class GameInfo
     {
+        public static readonly int NumberOfRounds = 3;
+        public static readonly int ResponseTime = 60;
+        public static readonly int VoteTime = 30;
+        
         public readonly Dictionary<string, PlayerInfo> players = new Dictionary<string, PlayerInfo>();
 
         public readonly List<RoundInfo> rounds = new List<RoundInfo>();
-        public int numberOfRounds;
 
         public int roundIndex = 0;
-
-        public GameInfo(int _numberOfRounds)
-        {
-            numberOfRounds = _numberOfRounds;
-        }
     }
 }
 
@@ -34,6 +33,7 @@ public class RoundInfo
         "How would you describe what a dog is to an alien?",
         "The worst thing to be reincarnated as",
         "The worst thing to make a spaceship out of",
+        "How did the cow jump over the moon?",
     };
 
     public readonly List<DuelInfo> duels = new List<DuelInfo>();
@@ -58,7 +58,8 @@ public class RoundInfo
         //add a new duel for each pair of players
         while (players.Count > 0)
         {
-            duels.Add(new DuelInfo(prompts[new Random().Next(0, prompts.Length)], players.GetRange(0, 2).ToArray()));
+            var randomPromptIndex = new Random().Next(0, prompts.Length);
+            duels.Add(new DuelInfo(prompts[randomPromptIndex], players.GetRange(0, 2).ToArray()));
             players.RemoveRange(0, 2);
         }
     }
@@ -68,7 +69,7 @@ public class DuelInfo
 {
     public string[] players;
     public string prompt;
-    public List<ResponseInfo> responses = new List<ResponseInfo>();
+    public List<ResponseInfo> responses = new List<ResponseInfo>(2);
 
     public List<string> voters = new List<string>();
     public bool isVotingComplete => voters.Count == 0;

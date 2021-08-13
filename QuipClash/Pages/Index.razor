@@ -5,76 +5,196 @@
 @implements IAsyncDisposable
 
 <style>
-	ol.leaderboard {
-		list-style: upper-roman;
+	* {
+		color: #2d232e;
+		font-size: 24px;
+		font-family: sans-serif;
+	}
+	body {
+		background-color: #30bced;
+	}
+	p {
+		margin: 0;
+	}
+		p.centered, h2.centered, h3.centered {
+			width: 100%;
+			text-align: center;
+		}
+		p.game-id-display {
+			font-weight: bold;
+		}
+	.element-container {
+		margin: 0;
+		padding: 0;
+		width: 100%;
+		height: 100%;
+	}
+	div.centered {
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+	}
+	form.center-content {
+		display: flex;
+		flex-direction: column;
+		align-content: center;
+	}
+	.lobby, .leaderboard {
+		padding: 18px;
+		width: 48vw;
+		height: fit-content;
+		border-radius: 4px;
+		border-color: white;
+		background-color: white;
+		display: flex;
+		flex-direction: column;
+		align-content: center;
+	}
+	ul, ol {
+		padding: 14px;
+		border-radius: 4px;
+		border-color: lightgray;
+		background-color: lightgray;
+		list-style: none;
+		overflow: hidden;
+	}
+		ol {
+			list-style: upper-roman;
+		}
+	input[type=text] {
+		margin-bottom: 8px;
+		background-color: white;
+		border: dashed;
+		border-color: #f7d53c;
+	}
+		input[type=text]:scope {
+			border: dashed;
+			border-color: #f7d53c;
+		}
+	input[type=button], button {
+		padding: 4px;
+		border-radius: 2px;
+		border-color: #f7d43b;
+		font-weight: bold;
+		border: none;
+		background-color: #f7d43b;
+	}
+		input[type=button]:disabled, button:disabled {
+			border-color: #c4a108;
+			background-color: #c4a108;
+		}
+		button.vote-button {
+			
+		}
+	h1 {
+		margin: 0;
+		font-family: 'Fredoka One';
+		font-size: 128px;
+		color: #f7d53c;
+		-webkit-text-stroke-width: 2px;
+		-webkit-text-stroke-color: black;
+	}
+	h2 {
+		margin: 0;
+		font-family: 'Fredoka One';
+		font-size: 56px;
+		color: #f7d53c;
+		-webkit-text-stroke-width: 2px;
+		-webkit-text-stroke-color: black;
+	}
+	h3 {
+		font-size: 24px;
+		font-weight: bold;
+	}
+	.title-underline {
+		margin-top: -12px;
+		width: 713px;
+		height: 17px;
+		border-radius: 7px;
+		border-width: 7px;
+		background-color: #e34543;
 	}
 </style>
 
-<div class="menu" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Menu)">
-	<form>
-		<p>Username</p>
-		<input type="text" maxlength="32" placeholder="epic_username_69" @bind-value="username" />
+<div class="element-container" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Menu)">
+	<div class="centered">
+		<h1 class="title">QUIPCLASH</h1>
+		<div class="title-underline" />
 		<br />
-		<br />
-		<input type="text" maxlength="4" @bind-value="gameIDInput" />
-		<input type="button" value="Join hub" disabled="@(username == "" || gameIDInput.Length != 4 || !QuipClashHub.ActiveGames.ContainsKey(gameIDInput))" @onclick="JoinGame" />
-		<br />
-		<br />
-		<input type="button" value="Create hub" @onclick="CreateGame" />
-	</form>
+		<form>
+			<input type="text" maxlength="32" placeholder="Username" @bind-value="username" />
+			<br />
+			<input type="text" maxlength="4" placeholder="Game ID" @bind-value="gameIDInput" />
+			<br />
+			<input type="button" value="Join game" disabled="@(username == "" || !QuipClashHub.ActiveGames.ContainsKey(gameIDInput.ToLower()))" @onclick="JoinGame" />
+			<input style="float:right;" type="button" value="Create game" disabled="@(username == "")" @onclick="CreateGame" />
+		</form>
+	</div>
 </div>
-<div class="lobby" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Lobby)">
+<div class="element-container" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Lobby)">
 	@if (QuipClashHub.ActiveGames.Count > 0 && gameID != "")
 	{
-		<p>Game ID: @gameID</p>
-		<ul>
-			@foreach (PlayerInfo _info in QuipClashHub.ActiveGames[gameID].players.Values)
-			{
-				<PlayerListItem Username="@_info.username" IsPartyLeader="@_info.isPartyLeader" />
-			}
-		</ul>
-		//why doesn't this work????????? It's disabled even when I have 3 players
-		<button hidden="@(!isPartyLeader)" disabled="@QuipClashHub.ActiveGames[gameID].players.Count < 3" @onclick="StartGame">Start game</button>
+		<div class="centered">
+			<div class="lobby">
+				<p class="centered game-id-display"><b>Game ID: <span style="color: #e34543">@gameID.ToUpper()</span></b></p>
+				<ul>
+					@foreach (PlayerInfo _info in QuipClashHub.ActiveGames[gameID].players.Values)
+					{
+						<PlayerListItem Username="@_info.username" MascottIndex="@_info.mascottNumber" />
+					}
+				</ul>
+				<button hidden="@(!isPartyLeader)" disabled="@(QuipClashHub.ActiveGames[gameID].players.Count < 3)" @onclick="StartGame">Start game</button>
+			</div>
+		</div>
 	}
 </div>
-<div class="game" hidden="@(currentPlayerState == PlayerInfo.PlayerState.Lobby)">
-	<div class="responding" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Responding)">
-		<form @onsubmit="SendResponse">
-			<p><b>@currentPrompt</b></p>
+<div class="element-container" hidden="@(currentPlayerState == PlayerInfo.PlayerState.Lobby || currentPlayerState == PlayerInfo.PlayerState.Menu)">
+	<div class="centered" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Responding)">
+		<form class="center-content" @onsubmit="SendResponse">
+			<h2>@currentPrompt</h2>
 			<input type="text" maxlength="64" @bind-value="responseInput" />
 		</form>
 	</div>
-	<div class="waiting" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Waiting)">
-
+	<div class="centered" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Waiting)">
+		<h1>Please wait</h1>
 	</div>
-	<div class="voting" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Voting)">
-		<p><b>@currentPrompt</b></p>
+	<div class="centered" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Voting)">
+		<h2>@currentPrompt</h2>
 		@if (currentResponses != null)
 		{
 			foreach (ResponseInfo _response in currentResponses)
 			{
-				<button @onclick="async() => await SendVote(_response.optionNumber)">@_response.response</button>
+				<button class="vote-button" @onclick="async() => await SendVote(_response.optionNumber)">@_response.response</button>
 			}
 		}
 	</div>
-	<div class="voting" hidden="@(currentPlayerState != PlayerInfo.PlayerState.EndGame)">
-		<ol class="leaderboard">
+	<div class="centered" hidden="@(currentPlayerState != PlayerInfo.PlayerState.EndGame)">
+		<div class="leaderboard">
+			<h2 style="color: #e34543;" class="centered">Leaderboard</h2>
 			@if (currentLeaderboard != null)
 			{
-				@for (int i = 0; i < 3; i++)
-				{
-					<PlayerListItem Username="@currentLeaderboard[i].username" IsPartyLeader="@currentLeaderboard[i].isPartyLeader" />
-				}
+				<h3 class="centered">You placed #@currentLeaderboard.IndexOf(currentLeaderboard.Find(p => p.username == username))</h3>
+				<ol>
+					@for (int i = 0; i < 3; i++)
+					{
+						var _info = currentLeaderboard[i];
+						<PlayerListItem Username="@_info.username" MascottIndex="@_info.mascottNumber" />
+					}
+				</ol>
 			}
-		</ol>
-		<button @onclick="() => UpdatePlayerState(PlayerInfo.PlayerState.Menu)">Return to menu</button>
+			<button @onclick="() => UpdatePlayerState(PlayerInfo.PlayerState.Menu)">Return to menu</button>
+		</div>
 	</div>
 </div>
 
 @code {
-	//UI variables
+	//local variables
 	string gameIDInput = "";
 	string responseInput = "";
+
+	readonly int mascottCount = 5;
 
 	//game variables
 	string gameID = "";
@@ -85,6 +205,7 @@
 	int currentDuelIndex;
 	List<ResponseInfo> currentResponses;
 	List<PlayerInfo> currentLeaderboard;
+	int currentPlacing;
 	PlayerInfo.PlayerState currentPlayerState;
 
 	HubConnection hubConnection;
@@ -98,11 +219,11 @@
 
 		//adds handlers
 		hubConnection.On<string>("CompleteCreateGame", async (g) => await CompleteCreateGame(g));
-		hubConnection.On<string, List<ResponseInfo>>("ReceiveResponses", (p, r) => ReceiveResponses(p, r));
+		hubConnection.On<string, List<ResponseInfo>>("BeginVote", (p, r) => BeginVote(p, r));
 		hubConnection.On<string, int>("BeginRespond", (p, d) => BeginRespond(p, d));
 		hubConnection.On<PlayerInfo.PlayerState>("UpdatePlayerState", (s) => UpdatePlayerState(s));
 		hubConnection.On<List<PlayerInfo>>("GameEnded", (l) => GameEnded(l));
-		hubConnection.On("UpdateUI", () => StateHasChanged());
+		hubConnection.On("UpdateUI", StateHasChanged);
 
 		//initiates the connection
 		await hubConnection.StartAsync();
@@ -115,11 +236,10 @@
 
 	async Task JoinGame()
 	{
-		gameID = gameIDInput;
+		gameID = gameIDInput.ToLower();
 
-		await hubConnection.SendAsync("RegisterPlayer", gameID, username);
-
-		UpdatePlayerState(PlayerInfo.PlayerState.Lobby);
+		var randomm = new Random();
+		await hubConnection.SendAsync("RegisterPlayer", gameID, username, randomm.Next(1, mascottCount));
 	}
 
 	async Task CreateGame()
@@ -171,13 +291,17 @@
 
 		UpdatePlayerState(PlayerInfo.PlayerState.Responding);
 
+		//do timer stuff here
+
 		StateHasChanged();
 	}
 
-	public void ReceiveResponses(string prompt, List<ResponseInfo> responses)
+	public void BeginVote(string prompt, List<ResponseInfo> responses)
 	{
 		currentPrompt = prompt;
 		currentResponses = responses;
+
+		//do timer stuff here
 	}
 
 	public void GameEnded(List<PlayerInfo> leaderboard)

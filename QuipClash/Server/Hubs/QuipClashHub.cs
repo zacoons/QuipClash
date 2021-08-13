@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Timers;
 using Microsoft.AspNetCore.SignalR;
 using QuipClash.Shared;
 
@@ -21,47 +22,51 @@ namespace QuipClash.Server.Hubs
                 await CreateGame();
             else
             {
-                ActiveGames.Add(gameID, new GameInfo(3));
+                ActiveGames.Add(gameID, new GameInfo());
 
                 await Clients.Client(Context.ConnectionId).SendAsync("CompleteCreateGame", gameID);
             }
         }
         private string GenerateGameID()
         {
+            var random = new Random();
             var alphabet = new char[]
                 { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z' };
             char[] characters = new char[4];
 
             for (int i = 0; i < 4; i++)
             {
-                var isCharacterInt = new Random().Next(0, 1) == 0;
+                var isCharacterInt = random.NextDouble() >= 0.5; ;
 
                 if (isCharacterInt)
-                    characters[i] = new Random().Next(0, 9).ToString().ToCharArray()[0];
+                    characters[i] = random.Next(0, 9).ToString().ToCharArray()[0];
                 else
-                    characters[i] = alphabet[new Random().Next(0, 26)];
+                    characters[i] = alphabet[random.Next(0, 26)];
             }
 
             return new string(characters);
         }
 
-        public async Task RegisterPlayer(string gameID, string username)
+        public async Task RegisterPlayer(string gameID, string username, int mascottNumber)
         {
             var players = ActiveGames[gameID].players;
+            
+            players.Add(Context.ConnectionId, new PlayerInfo(gameID, players.Count == 0, username, mascottNumber));
+            
             foreach (string _connectionID in players.Keys.ToArray())
                 await Groups.AddToGroupAsync(_connectionID, gameID);
-
-            players.Add(Context.ConnectionId, new PlayerInfo(gameID, username, players.Count == 0));
             
             await Clients.Group(gameID).SendAsync("UpdateUI");
+            await Clients.Client(Context.ConnectionId).SendAsync("UpdatePlayerState", PlayerInfo.PlayerState.Lobby);
         }
         public async Task RemovePlayer(string gameID)
         {
             var players = ActiveGames[gameID].players;
+            
+            players.Remove(Context.ConnectionId);
+            
             foreach (string _connectionID in players.Keys.ToArray())
                 await Groups.AddToGroupAsync(_connectionID, gameID);
-
-            players.Remove(Context.ConnectionId);
 
             await Clients.Group(gameID).SendAsync("UpdateUI");
         }
@@ -77,7 +82,7 @@ namespace QuipClash.Server.Hubs
             var roundInfo = activeGame.rounds[activeGame.roundIndex];
             var duelInfo = roundInfo.duels[duelIndex];
 
-            //adds the user's response to the array
+            //adds the user's response to the array and removes them from the duel's response queue
             duelInfo.responses.Add(new ResponseInfo(response, Context.ConnectionId, duelInfo.responses.Count));
 
             //checks if it was the final response in a duel and if it was the final duel in a round
@@ -116,7 +121,7 @@ namespace QuipClash.Server.Hubs
             }
         }
 
-        async Task StartNextVote(string gameID)
+        private async Task StartNextVote(string gameID)
         {
             var activeGame = ActiveGames[gameID];
             var roundInfo = activeGame.rounds[activeGame.roundIndex];
@@ -129,17 +134,17 @@ namespace QuipClash.Server.Hubs
             //lets the voters know about what they're voting for
             foreach (string _voter in voters)
             {
-                await Clients.Client(_voter).SendAsync("ReceiveResponses", duelInfo.prompt, duelInfo.responses);
+                await Clients.Client(_voter).SendAsync("BeginVote", duelInfo.prompt, duelInfo.responses);
                 await Clients.Client(_voter).SendAsync("UpdatePlayerState", PlayerInfo.PlayerState.Voting);
             }
         }
 
-        async Task StartNewRound(string gameID)
+        private async Task StartNewRound(string gameID)
         {
             var activeGame = ActiveGames[gameID];
             var activeRounds = ActiveGames[gameID].rounds;
 
-            if (activeRounds.Count == activeGame.numberOfRounds)
+            if (activeRounds.Count == GameInfo.NumberOfRounds)
                 await EndGame(gameID);
             else
             {
@@ -159,7 +164,7 @@ namespace QuipClash.Server.Hubs
             }
         }
 
-        async Task EndGame(string gameID)
+        private async Task EndGame(string gameID)
         {
             var players = ActiveGames[gameID].players;
 

@@ -1,16 +1,25 @@
-﻿@if (IsPartyLeader)
-{
-	<p>🜲 @Username</p>
-}
-else
-{
-	<p>@Username</p>
-}
+﻿<style>
+	p.player-list-item {
+		margin: 0;
+		margin-right: 24vw;
+		overflow: hidden;
+	}
+	span {
+		overflow: hidden;
+		color: #e34543;
+	}
+	img {
+		width: 32px;
+		height: 32px;
+	}
+</style>
+
+<p class="player-list-item"><img src=@($"/images/mascotts/{MascottIndex}.png") /> @Username</p>
 
 @code {
 	[Parameter]
 	public string Username { get; set; }
 
 	[Parameter]
-	public bool IsPartyLeader { get; set; }
+	public int MascottIndex { get; set; }
 }
