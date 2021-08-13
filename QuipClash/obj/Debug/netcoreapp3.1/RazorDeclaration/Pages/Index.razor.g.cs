@@ -98,13 +98,13 @@ using QuipClash.Server.Hubs;
         }
         #pragma warning restore 1998
 #nullable restore
-#line 189 "C:\Users\zacha\source\repos\QuipClash\QuipClash\Pages\Index.razor"
+#line 192 "C:\Users\zacha\source\repos\QuipClash\QuipClash\Pages\Index.razor"
        
 	//local variables
 	string gameIDInput = "";
 	string responseInput = "";
 
-	readonly int mascottCount = 5;
+	readonly int mascottCount = 7;
 
 	//game variables
 	string gameID = "";

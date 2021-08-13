@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "yuF1DvjluJbSI67BX0PrXXsF6MI2nx1Z4cGPi0h1jn63cbfiDG9I0bGQHGsv74/HW+FR00oXZFwCQDA8rtmYSw==",
+  "dgSpecHash": "FveF8G5/l8ClaGUdNqFjAOC86hWEQCL2Jo+Dh3NNGD133OS8RTn3wC0Wtor2qkFMgkX7dwEmnDRs7JjW8Cuv+w==",
   "success": true,
   "projectFilePath": "C:\\Users\\zacha\\source\\repos\\QuipClash\\QuipClash\\QuipClash.csproj",
   "expectedPackageFiles": [
@@ -23,7 +23,10 @@
     "C:\\Users\\zacha\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\5.0.0\\system.runtime.compilerservices.unsafe.5.0.0.nupkg.sha512",
     "C:\\Users\\zacha\\.nuget\\packages\\system.text.encodings.web\\5.0.1\\system.text.encodings.web.5.0.1.nupkg.sha512",
     "C:\\Users\\zacha\\.nuget\\packages\\system.text.json\\5.0.2\\system.text.json.5.0.2.nupkg.sha512",
-    "C:\\Users\\zacha\\.nuget\\packages\\system.threading.channels\\5.0.0\\system.threading.channels.5.0.0.nupkg.sha512"
+    "C:\\Users\\zacha\\.nuget\\packages\\system.threading.channels\\5.0.0\\system.threading.channels.5.0.0.nupkg.sha512",
+    "C:\\Users\\zacha\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\3.1.16\\microsoft.netcore.app.runtime.win-x64.3.1.16.nupkg.sha512",
+    "C:\\Users\\zacha\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\3.1.16\\microsoft.windowsdesktop.app.runtime.win-x64.3.1.16.nupkg.sha512",
+    "C:\\Users\\zacha\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\3.1.16\\microsoft.aspnetcore.app.runtime.win-x64.3.1.16.nupkg.sha512"
   ],
   "logs": []
 }

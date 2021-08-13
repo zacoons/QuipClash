@@ -98,64 +98,100 @@ using QuipClash.Server.Hubs;
         }
         #pragma warning restore 1998
 #nullable restore
-#line 66 "C:\Users\zacha\source\repos\QuipClash\QuipClash\Pages\Index.razor"
+#line 192 "C:\Users\zacha\source\repos\QuipClash\QuipClash\Pages\Index.razor"
        
-	string debugText = "<empty>";
+	//local variables
+	string gameIDInput = "";
+	string responseInput = "";
 
+	readonly int mascottCount = 7;
+
+	//game variables
+	string gameID = "";
 	string username = "";
-
-	string joinHubInput;
-	string responseInput;
-
-	bool isPartyLeader;
+	bool isPartyLeader = false;
 
 	string currentPrompt;
 	int currentDuelIndex;
 	List<ResponseInfo> currentResponses;
+	List<PlayerInfo> currentLeaderboard;
+	int currentPlacing;
+	PlayerInfo.PlayerState currentPlayerState;
 
 	HubConnection hubConnection;
-	bool isConnected;
 
-	private PlayerInfo.PlayerState playerState;
-
-	async Task JoinHub()
+	protected override async Task OnInitializedAsync()
 	{
-		try
-		{
-			hubConnection = new HubConnectionBuilder()
-				.WithUrl(NavigationManager.ToAbsoluteUri($"/hub-1234"))
-				.Build();
-			hubConnection.On<string, List<ResponseInfo>>("ReceiveResponses", (p, r) => ReceiveResponses(p, r));
-			hubConnection.On<string, int>("BeginRespond", (p, d) => BeginRespond(p, d));
-			hubConnection.On<PlayerInfo.PlayerState>("UpdatePlayerState", (s) => UpdatePlayerState(s));
-			await hubConnection.StartAsync();
+		//creates the hub connection
+		hubConnection = new HubConnectionBuilder()
+			.WithUrl(NavigationManager.ToAbsoluteUri($"/quipclashhub"))
+			.Build();
 
-			isConnected = true;
-			await hubConnection.SendAsync("RegisterPlayer", username);
-			isPartyLeader = QuipClashHub.Players[hubConnection.ConnectionId].isPartyLeader;
-			UpdatePlayerState(PlayerInfo.PlayerState.Lobby);
+		//adds handlers
+		hubConnection.On<string>("CompleteCreateGame", async (g) => await CompleteCreateGame(g));
+		hubConnection.On<string, List<ResponseInfo>>("BeginVote", (p, r) => BeginVote(p, r));
+		hubConnection.On<string, int>("BeginRespond", (p, d) => BeginRespond(p, d));
+		hubConnection.On<PlayerInfo.PlayerState>("UpdatePlayerState", (s) => UpdatePlayerState(s));
+		hubConnection.On<List<PlayerInfo>>("GameEnded", (l) => GameEnded(l));
+		hubConnection.On("UpdateUI", StateHasChanged);
 
-			StateHasChanged();
-		}
-		catch { }
+		//initiates the connection
+		await hubConnection.StartAsync();
+
+		//brings you to the menu
+		UpdatePlayerState(PlayerInfo.PlayerState.Menu);
 	}
 
-	async Task CreateHub()
-	{
+	// outbound logic //
 
+	async Task JoinGame()
+	{
+		gameID = gameIDInput.ToLower();
+
+		var randomm = new Random();
+		await hubConnection.SendAsync("RegisterPlayer", gameID, username, randomm.Next(1, mascottCount));
+	}
+
+	async Task CreateGame()
+	{
+		isPartyLeader = true;
+		await hubConnection.SendAsync("CreateGame");
 	}
 
 	async Task StartGame()
 	{
-		await hubConnection.SendAsync("StartGame");
-
-		StateHasChanged();
+		await hubConnection.SendAsync("StartGame", gameID);
 	}
 
-	public void ReceiveResponses(string prompt, List<ResponseInfo> responses)
+	async Task SendResponse()
 	{
-		currentPrompt = prompt;
-		currentResponses = responses;
+		await hubConnection.SendAsync("SendResponse", gameID, responseInput, currentDuelIndex);
+
+		UpdatePlayerState(PlayerInfo.PlayerState.Waiting);
+	}
+
+	async Task SendVote(int voteOption)
+	{
+		await hubConnection.SendAsync("SendVote", gameID, voteOption);
+
+		UpdatePlayerState(PlayerInfo.PlayerState.Waiting);
+	}
+
+	public async ValueTask DisposeAsync()
+	{
+		if (hubConnection != null)
+		{
+			await hubConnection.SendAsync("RemovePlayer", gameID);
+			await hubConnection.DisposeAsync();
+		}
+	}
+
+	// inbound logic //
+
+	public async Task CompleteCreateGame(string _gameID)
+	{
+		gameIDInput = _gameID;
+		await JoinGame();
 	}
 
 	public void BeginRespond(string prompt, int duelIndex)
@@ -165,37 +201,29 @@ using QuipClash.Server.Hubs;
 
 		UpdatePlayerState(PlayerInfo.PlayerState.Responding);
 
+		//do timer stuff here
+
 		StateHasChanged();
 	}
 
-	async Task SendResponse()
+	public void BeginVote(string prompt, List<ResponseInfo> responses)
 	{
-		await hubConnection.SendAsync("SendResponse", responseInput, currentDuelIndex);
+		currentPrompt = prompt;
+		currentResponses = responses;
 
-		UpdatePlayerState(PlayerInfo.PlayerState.Waiting);
+		//do timer stuff here
 	}
 
-	async Task SendVote(int voteOption)
+	public void GameEnded(List<PlayerInfo> leaderboard)
 	{
-		await hubConnection.SendAsync("SendVote", voteOption);
-
-		UpdatePlayerState(PlayerInfo.PlayerState.Waiting);
+		currentLeaderboard = leaderboard;
 	}
 
 	public void UpdatePlayerState(PlayerInfo.PlayerState state)
 	{
-		playerState = state;
+		currentPlayerState = state;
 
 		StateHasChanged();
-	}
-
-	public async ValueTask DisposeAsync()
-	{
-		if (hubConnection != null)
-		{
-			await hubConnection.SendAsync("RemovePlayer");
-			await hubConnection.DisposeAsync();
-		}
 	}
 
 #line default
