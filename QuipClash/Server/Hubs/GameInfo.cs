@@ -25,15 +25,23 @@ public class RoundInfo
 {
     private readonly string[] prompts = new string[]
     {
-        "A word for a spider with diarrhea",
+        "My gandma is the best at...",
         "The tool that you would use for getting toast out of a toaster",
-        "My gandma is the best at ____",
-        "A man went to jail for...",
-        "Why did the chicken cross the road?",
-        "How would you describe what a dog is to an alien?",
+        "How did the cow jump over the moon",
         "The worst thing to be reincarnated as",
+        "A man went to jail for...",
+        "Why did the chicken cross the road",
+        "How would you describe what a dog is to an alien",
+        "A word for a spider with diarrhea",
+        "An interesting ice-cream flavour",
         "The worst thing to make a spaceship out of",
-        "How did the cow jump over the moon?",
+        "Something you never see a cop doing",
+        "Something you would never find on pizza",
+        "The title of a tragedy movie starring a cat",
+        "A very unique greeting",
+        "Use three words to describe snow",
+        "What did the cavement use instead of walkie-talkies",
+        "The name of an animal that you would never want to cuddle with",
     };
 
     public readonly List<DuelInfo> duels = new List<DuelInfo>();

@@ -65,3 +65,5 @@ C:\Users\zacha\source\repos\QuipClash\QuipClash\obj\Debug\netcoreapp3.1\RazorDec
 C:\Users\zacha\source\repos\QuipClash\QuipClash\obj\Debug\netcoreapp3.1\Razor\Shared\PlayerListItem.razor.g.cs
 C:\Users\zacha\source\repos\QuipClash\QuipClash\obj\Debug\netcoreapp3.1\RazorDeclaration\Shared\ResponseInputBox.razor.g.cs
 C:\Users\zacha\source\repos\QuipClash\QuipClash\obj\Debug\netcoreapp3.1\Razor\Shared\ResponseInputBox.razor.g.cs
+C:\Users\zacha\source\repos\QuipClash\QuipClash\obj\Debug\netcoreapp3.1\RazorDeclaration\Shared\ResponseVoteOption.razor.g.cs
+C:\Users\zacha\source\repos\QuipClash\QuipClash\obj\Debug\netcoreapp3.1\Razor\Shared\ResponseVoteOption.razor.g.cs

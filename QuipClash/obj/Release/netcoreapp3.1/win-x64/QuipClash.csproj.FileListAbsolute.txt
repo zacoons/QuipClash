@@ -398,3 +398,5 @@ C:\Users\zacha\source\repos\QuipClash\QuipClash\bin\Release\netcoreapp3.1\win-x6
 C:\Users\zacha\source\repos\QuipClash\QuipClash\bin\Release\netcoreapp3.1\win-x64\System.Security.Permissions.dll
 C:\Users\zacha\source\repos\QuipClash\QuipClash\bin\Release\netcoreapp3.1\win-x64\System.Windows.Extensions.dll
 C:\Users\zacha\source\repos\QuipClash\QuipClash\bin\Release\netcoreapp3.1\win-x64\aspnetcorev2_inprocess.dll
+C:\Users\zacha\source\repos\QuipClash\QuipClash\obj\Release\netcoreapp3.1\win-x64\RazorDeclaration\Shared\ResponseVoteOption.razor.g.cs
+C:\Users\zacha\source\repos\QuipClash\QuipClash\obj\Release\netcoreapp3.1\win-x64\Razor\Shared\ResponseVoteOption.razor.g.cs

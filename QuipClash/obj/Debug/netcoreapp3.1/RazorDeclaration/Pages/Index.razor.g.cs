@@ -90,7 +90,7 @@ using QuipClash.Server.Hubs;
 #line hidden
 #nullable disable
     [Microsoft.AspNetCore.Components.RouteAttribute("/")]
-    public partial class Index : Microsoft.AspNetCore.Components.ComponentBase, IAsyncDisposable
+    public partial class Index : Microsoft.AspNetCore.Components.ComponentBase, IAsyncDisposable, IDisposable
     {
         #pragma warning disable 1998
         protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __builder)
@@ -98,7 +98,7 @@ using QuipClash.Server.Hubs;
         }
         #pragma warning restore 1998
 #nullable restore
-#line 192 "C:\Users\zacha\source\repos\QuipClash\QuipClash\Pages\Index.razor"
+#line 216 "C:\Users\zacha\source\repos\QuipClash\QuipClash\Pages\Index.razor"
        
 	//local variables
 	string gameIDInput = "";
@@ -114,6 +114,7 @@ using QuipClash.Server.Hubs;
 	string currentPrompt;
 	int currentDuelIndex;
 	List<ResponseInfo> currentResponses;
+	bool isVoting;
 	List<PlayerInfo> currentLeaderboard;
 	int currentPlacing;
 	PlayerInfo.PlayerState currentPlayerState;
@@ -129,7 +130,8 @@ using QuipClash.Server.Hubs;
 
 		//adds handlers
 		hubConnection.On<string>("CompleteCreateGame", async (g) => await CompleteCreateGame(g));
-		hubConnection.On<string, List<ResponseInfo>>("BeginVote", (p, r) => BeginVote(p, r));
+		hubConnection.On<string, List<ResponseInfo>, bool>("BeginVote", (p, r, i) => BeginVote(p, r, i));
+		hubConnection.On<int>("UpdateVote", (v) => UpdateVote(v));
 		hubConnection.On<string, int>("BeginRespond", (p, d) => BeginRespond(p, d));
 		hubConnection.On<PlayerInfo.PlayerState>("UpdatePlayerState", (s) => UpdatePlayerState(s));
 		hubConnection.On<List<PlayerInfo>>("GameEnded", (l) => GameEnded(l));
@@ -148,8 +150,8 @@ using QuipClash.Server.Hubs;
 	{
 		gameID = gameIDInput.ToLower();
 
-		var randomm = new Random();
-		await hubConnection.SendAsync("RegisterPlayer", gameID, username, randomm.Next(1, mascottCount));
+		var random = new Random();
+		await hubConnection.SendAsync("RegisterPlayer", gameID, username, random.Next(1, mascottCount));
 	}
 
 	async Task CreateGame()
@@ -174,16 +176,18 @@ using QuipClash.Server.Hubs;
 	{
 		await hubConnection.SendAsync("SendVote", gameID, voteOption);
 
-		UpdatePlayerState(PlayerInfo.PlayerState.Waiting);
+		isVoting = false;
+
+		StateHasChanged();
 	}
 
+	public void Dispose()
+	{
+		hubConnection.DisposeAsync();
+	}
 	public async ValueTask DisposeAsync()
 	{
-		if (hubConnection != null)
-		{
-			await hubConnection.SendAsync("RemovePlayer", gameID);
-			await hubConnection.DisposeAsync();
-		}
+		await hubConnection.DisposeAsync();
 	}
 
 	// inbound logic //
@@ -202,16 +206,22 @@ using QuipClash.Server.Hubs;
 		UpdatePlayerState(PlayerInfo.PlayerState.Responding);
 
 		//do timer stuff here
-
-		StateHasChanged();
 	}
 
-	public void BeginVote(string prompt, List<ResponseInfo> responses)
+	public void BeginVote(string prompt, List<ResponseInfo> responses, bool isVoter)
 	{
 		currentPrompt = prompt;
 		currentResponses = responses;
+		isVoting = isVoter;
 
 		//do timer stuff here
+	}
+
+	public void UpdateVote(int voteOption)
+	{
+		currentResponses[voteOption].votes++;
+
+		StateHasChanged();
 	}
 
 	public void GameEnded(List<PlayerInfo> leaderboard)

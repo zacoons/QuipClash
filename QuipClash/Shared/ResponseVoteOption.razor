@@ -1,0 +1,48 @@
+﻿<style>
+	div.vote-option {
+		width: 256px;
+		height: 128px;
+		margin-right: 32px;
+	}
+	.vote-option button {
+		width: 256px;
+		height: 128px;
+		background-color: white;
+		border: dashed;
+		border-color: #f7d43b;
+	}
+		.vote-option button:disabled {
+			background-color: lightgray;
+		}
+	.vote-option p {
+		margin-top: -24px;
+		width: 100%;
+		text-align: center;
+		font-size: 32px;
+		font-weight: bold;
+		color: #e34543;
+		-webkit-text-stroke-width: 2px;
+		-webkit-text-stroke-color: black;
+	}
+</style>
+
+<div class="vote-option">
+	<button disabled="@Disabled" @onclick="(e) => OnClick.InvokeAsync(e)">
+		@ChildContent
+	</button>
+	<p>@Votes</p>
+</div>
+
+@code {
+	[Parameter]
+	public bool Disabled { get; set; }
+
+	[Parameter]
+	public EventCallback OnClick { get; set; }
+
+	[Parameter]
+	public int Votes { get; set; }
+
+	[Parameter]
+	public RenderFragment ChildContent { get; set; }
+}

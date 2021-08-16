@@ -10,6 +10,8 @@ namespace QuipClash.Shared
         public string response { get; set; }
         public string authorID { get; set; }
         public int optionNumber { get; set; }
+        
+        public int votes { get; set; }
 
         public ResponseInfo() { }
         public ResponseInfo(string _response, string _authorID, int _optionNumber)
@@ -17,6 +19,8 @@ namespace QuipClash.Shared
             response = _response;
             authorID = _authorID;
             optionNumber = _optionNumber;
+
+            votes = 0;
         }
     }
 }

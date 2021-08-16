@@ -3,6 +3,7 @@
 @using QuipClash.Server.Hubs;
 @inject NavigationManager NavigationManager
 @implements IAsyncDisposable
+@implements IDisposable
 
 <style>
 	* {
@@ -10,25 +11,31 @@
 		font-size: 24px;
 		font-family: sans-serif;
 	}
+
 	body {
 		background-color: #30bced;
 	}
+
 	p {
 		margin: 0;
 	}
+
 		p.centered, h2.centered, h3.centered {
 			width: 100%;
 			text-align: center;
 		}
+
 		p.game-id-display {
 			font-weight: bold;
 		}
+
 	.element-container {
 		margin: 0;
 		padding: 0;
 		width: 100%;
 		height: 100%;
 	}
+
 	div.centered {
 		height: 100%;
 		display: flex;
@@ -36,43 +43,49 @@
 		align-items: center;
 		justify-content: center;
 	}
+
 	form.center-content {
 		display: flex;
 		flex-direction: column;
 		align-content: center;
 	}
+
 	.lobby, .leaderboard {
 		padding: 18px;
 		width: 48vw;
 		height: fit-content;
-		border-radius: 4px;
-		border-color: white;
+		border: dashed;
+		border-color: #f7d43b;
 		background-color: white;
 		display: flex;
 		flex-direction: column;
 		align-content: center;
 	}
+
 	ul, ol {
 		padding: 14px;
 		border-radius: 4px;
-		border-color: lightgray;
 		background-color: lightgray;
 		list-style: none;
 		overflow: hidden;
 	}
-		ol {
-			list-style: upper-roman;
-		}
+
+	ol {
+		list-style: upper-roman;
+	}
+
 	input[type=text] {
 		margin-bottom: 8px;
 		background-color: white;
 		border: dashed;
 		border-color: #f7d53c;
 	}
+
 		input[type=text]:scope {
 			border: dashed;
 			border-color: #f7d53c;
 		}
+
 	input[type=button], button {
 		padding: 4px;
 		border-radius: 2px;
@@ -81,13 +94,12 @@
 		border: none;
 		background-color: #f7d43b;
 	}
+
 		input[type=button]:disabled, button:disabled {
 			border-color: #c4a108;
 			background-color: #c4a108;
 		}
-		button.vote-button {
-			
-		}
+
 	h1 {
 		margin: 0;
 		font-family: 'Fredoka One';
@@ -96,6 +108,7 @@
 		-webkit-text-stroke-width: 2px;
 		-webkit-text-stroke-color: black;
 	}
+
 	h2 {
 		margin: 0;
 		font-family: 'Fredoka One';
@@ -104,17 +117,24 @@
 		-webkit-text-stroke-width: 2px;
 		-webkit-text-stroke-color: black;
 	}
+
 	h3 {
 		font-size: 24px;
 		font-weight: bold;
 	}
+
 	.title-underline {
-		margin-top: -12px;
+		margin-top: -16px;
 		width: 713px;
 		height: 17px;
 		border-radius: 7px;
 		border-width: 7px;
 		background-color: #e34543;
+	}
+
+	div.align-content-horizontal {
+		display: flex;
+		flex-direction: row;
 	}
 </style>
 
@@ -134,10 +154,11 @@
 	</div>
 </div>
 <div class="element-container" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Lobby)">
-	@if (QuipClashHub.ActiveGames.Count > 0 && gameID != "")
+	@if (QuipClashHub.ActiveGames.Count > 0 && gameID != "" && QuipClashHub.ActiveGames.ContainsKey(gameID.ToLower()))
 	{
 		<div class="centered">
 			<div class="lobby">
+				<h2 style="color: #e34543;" class="centered">Lobby</h2>
 				<p class="centered game-id-display"><b>Game ID: <span style="color: #e34543">@gameID.ToUpper()</span></b></p>
 				<ul>
 					@foreach (PlayerInfo _info in QuipClashHub.ActiveGames[gameID].players.Values)
@@ -159,15 +180,18 @@
 	</div>
 	<div class="centered" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Waiting)">
 		<h1>Please wait</h1>
+		<div class="title-underline" />
 	</div>
 	<div class="centered" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Voting)">
 		<h2>@currentPrompt</h2>
 		@if (currentResponses != null)
 		{
-			foreach (ResponseInfo _response in currentResponses)
-			{
-				<button class="vote-button" @onclick="async() => await SendVote(_response.optionNumber)">@_response.response</button>
-			}
+			<div class="align-content-horizontal">
+				@foreach (ResponseInfo _response in currentResponses)
+				{
+					<ResponseVoteOption Disabled="@(!isVoting)" OnClick="async() => await SendVote(_response.optionNumber)" Votes="_response.votes">@_response.response</ResponseVoteOption>
+				}
+			</div>
 		}
 	</div>
 	<div class="centered" hidden="@(currentPlayerState != PlayerInfo.PlayerState.EndGame)">
@@ -204,6 +228,7 @@
 	string currentPrompt;
 	int currentDuelIndex;
 	List<ResponseInfo> currentResponses;
+	bool isVoting;
 	List<PlayerInfo> currentLeaderboard;
 	int currentPlacing;
 	PlayerInfo.PlayerState currentPlayerState;
@@ -219,7 +244,8 @@
 
 		//adds handlers
 		hubConnection.On<string>("CompleteCreateGame", async (g) => await CompleteCreateGame(g));
-		hubConnection.On<string, List<ResponseInfo>>("BeginVote", (p, r) => BeginVote(p, r));
+		hubConnection.On<string, List<ResponseInfo>, bool>("BeginVote", (p, r, i) => BeginVote(p, r, i));
+		hubConnection.On<int>("UpdateVote", (v) => UpdateVote(v));
 		hubConnection.On<string, int>("BeginRespond", (p, d) => BeginRespond(p, d));
 		hubConnection.On<PlayerInfo.PlayerState>("UpdatePlayerState", (s) => UpdatePlayerState(s));
 		hubConnection.On<List<PlayerInfo>>("GameEnded", (l) => GameEnded(l));
@@ -238,8 +264,8 @@
 	{
 		gameID = gameIDInput.ToLower();
 
-		var randomm = new Random();
-		await hubConnection.SendAsync("RegisterPlayer", gameID, username, randomm.Next(1, mascottCount));
+		var random = new Random();
+		await hubConnection.SendAsync("RegisterPlayer", gameID, username, random.Next(1, mascottCount));
 	}
 
 	async Task CreateGame()
@@ -264,16 +290,18 @@
 	{
 		await hubConnection.SendAsync("SendVote", gameID, voteOption);
 
-		UpdatePlayerState(PlayerInfo.PlayerState.Waiting);
+		isVoting = false;
+
+		StateHasChanged();
 	}
 
+	public void Dispose()
+	{
+		hubConnection.DisposeAsync();
+	}
 	public async ValueTask DisposeAsync()
 	{
-		if (hubConnection != null)
-		{
-			await hubConnection.SendAsync("RemovePlayer", gameID);
-			await hubConnection.DisposeAsync();
-		}
+		await hubConnection.DisposeAsync();
 	}
 
 	// inbound logic //
@@ -292,16 +320,22 @@
 		UpdatePlayerState(PlayerInfo.PlayerState.Responding);
 
 		//do timer stuff here
-
-		StateHasChanged();
 	}
 
-	public void BeginVote(string prompt, List<ResponseInfo> responses)
+	public void BeginVote(string prompt, List<ResponseInfo> responses, bool isVoter)
 	{
 		currentPrompt = prompt;
 		currentResponses = responses;
+		isVoting = isVoter;
 
 		//do timer stuff here
+	}
+
+	public void UpdateVote(int voteOption)
+	{
+		currentResponses[voteOption].votes++;
+
+		StateHasChanged();
 	}
 
 	public void GameEnded(List<PlayerInfo> leaderboard)

@@ -83,7 +83,7 @@ using QuipClash.Shared;
         }
         #pragma warning restore 1998
 #nullable restore
-#line 19 "C:\Users\zacha\source\repos\QuipClash\QuipClash\Shared\PlayerListItem.razor"
+#line 21 "C:\Users\zacha\source\repos\QuipClash\QuipClash\Shared\PlayerListItem.razor"
        
 	[Parameter]
 	public string Username { get; set; }

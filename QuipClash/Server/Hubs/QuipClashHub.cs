@@ -12,6 +12,20 @@ namespace QuipClash.Server.Hubs
     {
         public static readonly Dictionary<string, GameInfo> ActiveGames = new Dictionary<string, GameInfo>();
 
+        public override async Task OnDisconnectedAsync(Exception exception)
+        {
+            foreach (var kv in ActiveGames)
+            {
+                foreach (var player in kv.Value.players)
+                {
+                    if (player.Key == Context.ConnectionId)
+                        await RemovePlayer(kv.Key);
+                }
+            }
+
+            await base.OnDisconnectedAsync(exception);
+        }
+
         public async Task CreateGame()
         {
             //generates a random game ID
@@ -64,11 +78,16 @@ namespace QuipClash.Server.Hubs
             var players = ActiveGames[gameID].players;
             
             players.Remove(Context.ConnectionId);
-            
-            foreach (string _connectionID in players.Keys.ToArray())
-                await Groups.AddToGroupAsync(_connectionID, gameID);
 
-            await Clients.Group(gameID).SendAsync("UpdateUI");
+            if (players.Count == 0)
+                ActiveGames.Remove(gameID);
+            else
+            {
+                foreach (string _connectionID in players.Keys.ToArray())
+                    await Groups.AddToGroupAsync(_connectionID, gameID);
+
+                await Clients.Group(gameID).SendAsync("UpdateUI");
+            }
         }
 
         public async Task StartGame(string gameID)
@@ -103,6 +122,7 @@ namespace QuipClash.Server.Hubs
 
             //gives a point to the author of the option that was voted for
             activeGame.players[duelInfo.responses[voteOption].authorID].points++;
+            await Clients.Group(gameID).SendAsync("UpdateVote", voteOption);
             
             //removes the voter from the backlog
             duelInfo.voters.Remove(Context.ConnectionId);
@@ -132,10 +152,14 @@ namespace QuipClash.Server.Hubs
             duelInfo.voters = voters;
             
             //lets the voters know about what they're voting for
-            foreach (string _voter in voters)
+            foreach (string _player in activeGame.players.Keys)
             {
-                await Clients.Client(_voter).SendAsync("BeginVote", duelInfo.prompt, duelInfo.responses);
-                await Clients.Client(_voter).SendAsync("UpdatePlayerState", PlayerInfo.PlayerState.Voting);
+                if(voters.Contains(_player))
+                    await Clients.Client(_player).SendAsync("BeginVote", duelInfo.prompt, duelInfo.responses, true);
+                else
+                    await Clients.Client(_player).SendAsync("BeginVote", duelInfo.prompt, duelInfo.responses, false);
+
+                await Clients.Client(_player).SendAsync("UpdatePlayerState", PlayerInfo.PlayerState.Voting);
             }
         }
 
