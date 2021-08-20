@@ -115,6 +115,8 @@ namespace QuipClash.Server.Hubs
 
             //adds the user's response to the array and removes them from the duel's response queue
             duelInfo.responses.Add(new ResponseInfo(response, Context.ConnectionId, duelInfo.responses.Count));
+            roundInfo.waitingForCount--;
+            await Clients.Group(gameID).SendAsync("UpdateUI");
 
             //checks if it was the final response in a duel and if it was the final duel in a round
             if (duelInfo.responses.Count > 1)
@@ -131,6 +133,8 @@ namespace QuipClash.Server.Hubs
             var activeGame = ActiveGames[gameID];
             var roundInfo = activeGame.rounds[activeGame.roundIndex];
             var duelInfo = roundInfo.duels[roundInfo.completedVotes];
+
+            roundInfo.waitingForCount--;
 
             //gives a point to the author of the option that was voted for
             activeGame.players[duelInfo.responses[voteOption].authorID].points++;
@@ -162,6 +166,8 @@ namespace QuipClash.Server.Hubs
             //gets all of the players except the ones that took part in the duel that's being voted
             var voters = activeGame.players.Keys.ToList().Except(duelInfo.players.ToList()).ToList();
             duelInfo.voters = voters;
+
+            roundInfo.waitingForCount = voters.Count;
             
             //lets the voters know about what they're voting for
             foreach (string _player in activeGame.players.Keys)

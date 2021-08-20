@@ -161,7 +161,7 @@
 	</div>
 </div>
 <div class="element-container" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Lobby)">
-	@if (QuipClashHub.ActiveGames.Count > 0 && gameID != "" && QuipClashHub.ActiveGames.ContainsKey(gameID.ToLower()))
+	@if (QuipClashHub.ActiveGames.Count > 0 && gameID != "")
 	{
 		<div class="centered">
 			<div class="lobby">
@@ -198,6 +198,10 @@
 	<div class="centered" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Waiting)">
 		<h1>Please wait</h1>
 		<div class="title-underline" />
+		@if (QuipClashHub.ActiveGames.Count > 0 && gameID != "" && QuipClashHub.ActiveGames[gameID].rounds.Count > 0)
+		{
+			<h2 style="margin-top:10px;">You are waiting for @(QuipClashHub.ActiveGames[gameID].rounds[QuipClashHub.ActiveGames[gameID].roundIndex].waitingForCount) other players</h2>
+		}
 	</div>
 	<div class="centered" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Voting)">
 		<h2>@currentPrompt</h2>

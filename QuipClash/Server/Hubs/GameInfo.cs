@@ -46,6 +46,8 @@ public class RoundInfo
 
     public readonly List<DuelInfo> duels = new List<DuelInfo>();
 
+    public int waitingForCount;
+
     public int completedDuels;
     public bool isDuelingComplete => completedDuels == duels.Count;
 
@@ -68,6 +70,7 @@ public class RoundInfo
         {
             var randomPromptIndex = new Random().Next(0, prompts.Length);
             duels.Add(new DuelInfo(prompts[randomPromptIndex], players.GetRange(0, 2).ToArray()));
+            waitingForCount += 2;
             players.RemoveRange(0, 2);
         }
     }
