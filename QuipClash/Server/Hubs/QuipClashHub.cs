@@ -22,8 +22,6 @@ namespace QuipClash.Server.Hubs
                         await RemovePlayer(kv.Key);
                 }
             }
-
-            await base.OnDisconnectedAsync(exception);
         }
 
         public async Task CreateGame()
@@ -63,31 +61,45 @@ namespace QuipClash.Server.Hubs
 
         public async Task RegisterPlayer(string gameID, string username, int mascottNumber)
         {
-            var players = ActiveGames[gameID].players;
-            
-            players.Add(Context.ConnectionId, new PlayerInfo(gameID, players.Count == 0, username, mascottNumber));
-            
-            foreach (string _connectionID in players.Keys.ToArray())
-                await Groups.AddToGroupAsync(_connectionID, gameID);
-            
-            await Clients.Group(gameID).SendAsync("UpdateUI");
-            await Clients.Client(Context.ConnectionId).SendAsync("UpdatePlayerState", PlayerInfo.PlayerState.Lobby);
-        }
-        public async Task RemovePlayer(string gameID)
-        {
-            var players = ActiveGames[gameID].players;
-            
-            players.Remove(Context.ConnectionId);
-
-            if (players.Count == 0)
-                ActiveGames.Remove(gameID);
-            else
+            //If the game hasn't started
+            if (ActiveGames[gameID].rounds.Count == 0)
             {
+                var players = ActiveGames[gameID].players;
+
+                players.Add(Context.ConnectionId, new PlayerInfo(gameID, players.Count == 0, username, mascottNumber));
+
                 foreach (string _connectionID in players.Keys.ToArray())
                     await Groups.AddToGroupAsync(_connectionID, gameID);
 
                 await Clients.Group(gameID).SendAsync("UpdateUI");
+                await Clients.Client(Context.ConnectionId).SendAsync("UpdatePlayerState", PlayerInfo.PlayerState.Lobby);
             }
+        }
+        public async Task RemovePlayer(string gameID)
+        {
+            var activeGame = ActiveGames[gameID];
+            var players = activeGame.players;
+            
+            players.Remove(Context.ConnectionId);
+
+            if (players.Count == 0)
+            {
+                ActiveGames.Remove(gameID);
+                return;
+            }
+
+            //Creates the game's player group
+            foreach (string _connectionID in players.Keys.ToArray())
+                await Groups.AddToGroupAsync(_connectionID, gameID);
+
+            //If the game has started or if the party leader left
+            if (activeGame.rounds.Count > 0 || !players.ContainsValue(players.Values.FirstOrDefault((p) => p.isPartyLeader == true)))
+            {
+                await Clients.Group(gameID).SendAsync("UpdatePlayerState", PlayerInfo.PlayerState.Menu);
+                ActiveGames.Remove(gameID);
+            }
+            else
+                await Clients.Group(gameID).SendAsync("UpdateUI");
         }
 
         public async Task StartGame(string gameID)
@@ -176,7 +188,7 @@ namespace QuipClash.Server.Hubs
                 activeRounds.Add(new RoundInfo(activeGame.players.Keys.ToList(), activeGame.roundIndex));
 
                 //if there's a player sitting out they get told to wait. If not, then this is undone in the next section
-                await Clients.All.SendAsync("UpdatePlayerState", PlayerInfo.PlayerState.Waiting);
+                await Clients.Group(gameID).SendAsync("UpdatePlayerState", PlayerInfo.PlayerState.Waiting);
 
                 //lets the duellers know about their duel
                 for (int i = 0; i < activeRounds[activeGame.roundIndex].duels.Count; i++)

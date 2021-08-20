@@ -98,7 +98,7 @@ using QuipClash.Server.Hubs;
         }
         #pragma warning restore 1998
 #nullable restore
-#line 216 "C:\Users\zacha\source\repos\QuipClash\QuipClash\Pages\Index.razor"
+#line 233 "C:\Users\zacha\source\repos\QuipClash\QuipClash\Pages\Index.razor"
        
 	//local variables
 	string gameIDInput = "";
@@ -152,6 +152,11 @@ using QuipClash.Server.Hubs;
 
 		var random = new Random();
 		await hubConnection.SendAsync("RegisterPlayer", gameID, username, random.Next(1, mascottCount));
+	}
+
+	async Task LeaveGame()
+	{
+		await hubConnection.SendAsync("RemovePlayer", gameID);
 	}
 
 	async Task CreateGame()

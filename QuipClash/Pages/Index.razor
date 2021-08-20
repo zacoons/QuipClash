@@ -93,11 +93,18 @@
 		font-weight: bold;
 		border: none;
 		background-color: #f7d43b;
+		margin-bottom: 5px;
 	}
 
 		input[type=button]:disabled, button:disabled {
 			border-color: #c4a108;
 			background-color: #c4a108;
+		}
+
+		button.cancel {
+			margin-right: 5px;
+			width: 50%;
+			background-color: #e34543;
 		}
 
 	h1 {
@@ -166,7 +173,17 @@
 						<PlayerListItem Username="@_info.username" MascottIndex="@_info.mascottNumber" />
 					}
 				</ul>
-				<button hidden="@(!isPartyLeader)" disabled="@(QuipClashHub.ActiveGames[gameID].players.Count < 3)" @onclick="StartGame">Start game</button>
+				<div class="align-content-horizontal">
+					@if (isPartyLeader)
+					{
+						<button class="cancel" @onclick="LeaveGame">Cancel game</button>
+					}
+					else
+					{
+						<button class="cancel" style="float:right;" @onclick="LeaveGame">Leave game</button>
+					}
+					<button style="width: 50%; margin-left: 5px; " hidden="@(!isPartyLeader)" disabled="@(QuipClashHub.ActiveGames[gameID].players.Count < 3)" @onclick="StartGame">Start game</button>
+				</div>
 			</div>
 		</div>
 	}
@@ -266,6 +283,11 @@
 
 		var random = new Random();
 		await hubConnection.SendAsync("RegisterPlayer", gameID, username, random.Next(1, mascottCount));
+	}
+
+	async Task LeaveGame()
+	{
+		await hubConnection.SendAsync("RemovePlayer", gameID);
 	}
 
 	async Task CreateGame()
