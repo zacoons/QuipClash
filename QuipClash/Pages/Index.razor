@@ -168,9 +168,12 @@
 				<h2 style="color: #e34543;" class="centered">Lobby</h2>
 				<p class="centered game-id-display"><b>Game ID: <span style="color: #e34543">@gameID.ToUpper()</span></b></p>
 				<ul>
-					@foreach (PlayerInfo _info in QuipClashHub.ActiveGames[gameID].players.Values)
+					@if (QuipClashHub.ActiveGames.ContainsKey(gameID))
 					{
-						<PlayerListItem Username="@_info.username" MascottIndex="@_info.mascottNumber" />
+						@foreach (PlayerInfo _info in QuipClashHub.ActiveGames[gameID].players.Values)
+						{
+							<PlayerListItem Username="@_info.username" MascottIndex="@_info.mascottNumber" />
+						}
 					}
 				</ul>
 				<div class="align-content-horizontal">
@@ -182,7 +185,10 @@
 					{
 						<button class="cancel" style="float:right;" @onclick="LeaveGame">Leave game</button>
 					}
-					<button style="width: 50%; margin-left: 5px; " hidden="@(!isPartyLeader)" disabled="@(QuipClashHub.ActiveGames[gameID].players.Count < 3)" @onclick="StartGame">Start game</button>
+					@if (QuipClashHub.ActiveGames.ContainsKey(gameID))
+					{
+						<button style="width: 50%; margin-left: 5px; " hidden="@(!isPartyLeader)" disabled="@(QuipClashHub.ActiveGames[gameID].players.Count < 3)" @onclick="StartGame">Start game</button>
+					}
 				</div>
 			</div>
 		</div>
@@ -198,7 +204,7 @@
 	<div class="centered" hidden="@(currentPlayerState != PlayerInfo.PlayerState.Waiting)">
 		<h1>Please wait</h1>
 		<div class="title-underline" />
-		@if (QuipClashHub.ActiveGames.Count > 0 && gameID != "" && QuipClashHub.ActiveGames[gameID].rounds.Count > 0)
+		@if (QuipClashHub.ActiveGames.Count > 0 && gameID != "" && QuipClashHub.ActiveGames.ContainsKey(gameID) && QuipClashHub.ActiveGames[gameID].rounds.Count > 0)
 		{
 			<h2 style="margin-top:10px;">You are waiting for @(QuipClashHub.ActiveGames[gameID].rounds[QuipClashHub.ActiveGames[gameID].roundIndex].waitingForCount) other players</h2>
 		}
@@ -218,7 +224,7 @@
 	<div class="centered" hidden="@(currentPlayerState != PlayerInfo.PlayerState.EndGame)">
 		<div class="leaderboard">
 			<h2 style="color: #e34543;" class="centered">Leaderboard</h2>
-			@if (currentLeaderboard != null)
+			@if (currentLeaderboard != null && currentLeaderboard.Count > 0)
 			{
 				<h3 class="centered">You placed #@currentLeaderboard.IndexOf(currentLeaderboard.Find(p => p.username == username))</h3>
 				<ol>
@@ -292,6 +298,7 @@
 	async Task LeaveGame()
 	{
 		await hubConnection.SendAsync("RemovePlayer", gameID);
+		UpdatePlayerState(PlayerInfo.PlayerState.Menu);
 	}
 
 	async Task CreateGame()

@@ -25,7 +25,7 @@ public class RoundInfo
 {
     private readonly string[] prompts = new string[]
     {
-        "My gandma is the best at...",
+        "My grandma is the best at...",
         "The tool that you would use for getting toast out of a toaster",
         "How did the cow jump over the moon",
         "The worst thing to be reincarnated as",
@@ -40,7 +40,7 @@ public class RoundInfo
         "The title of a tragedy movie starring a cat",
         "A very unique greeting",
         "Use three words to describe snow",
-        "What did the cavement use instead of walkie-talkies",
+        "What did the cavemen use instead of walkie-talkies",
         "The name of an animal that you would never want to cuddle with",
     };
 

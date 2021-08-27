@@ -61,8 +61,8 @@ namespace QuipClash.Server.Hubs
 
         public async Task RegisterPlayer(string gameID, string username, int mascottNumber)
         {
-            //If the game hasn't started
-            if (ActiveGames[gameID].rounds.Count == 0)
+            //If the game exists and hasn't started
+            if (ActiveGames.ContainsKey(gameID) && ActiveGames[gameID].rounds.Count == 0)
             {
                 var players = ActiveGames[gameID].players;
 
@@ -79,7 +79,16 @@ namespace QuipClash.Server.Hubs
         {
             var activeGame = ActiveGames[gameID];
             var players = activeGame.players;
-            
+
+            //If the game has started or if the party leader left
+            if (activeGame.rounds.Count > 0 || players[Context.ConnectionId].isPartyLeader)
+            {
+                await Clients.Group(gameID).SendAsync("UpdatePlayerState", PlayerInfo.PlayerState.Menu);
+                ActiveGames.Remove(gameID);
+                return;
+            }
+
+            //removes the player
             players.Remove(Context.ConnectionId);
 
             if (players.Count == 0)
@@ -92,14 +101,7 @@ namespace QuipClash.Server.Hubs
             foreach (string _connectionID in players.Keys.ToArray())
                 await Groups.AddToGroupAsync(_connectionID, gameID);
 
-            //If the game has started or if the party leader left
-            if (activeGame.rounds.Count > 0 || !players.ContainsValue(players.Values.FirstOrDefault((p) => p.isPartyLeader == true)))
-            {
-                await Clients.Group(gameID).SendAsync("UpdatePlayerState", PlayerInfo.PlayerState.Menu);
-                ActiveGames.Remove(gameID);
-            }
-            else
-                await Clients.Group(gameID).SendAsync("UpdateUI");
+            await Clients.Group(gameID).SendAsync("UpdateUI");
         }
 
         public async Task StartGame(string gameID)
